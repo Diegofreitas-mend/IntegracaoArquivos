@@ -1,1 +1,1 @@
-print('Sistema de vendas')
+print("Sistema de vendas")
