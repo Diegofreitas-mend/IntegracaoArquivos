@@ -1,0 +1,8 @@
+{
+  "venda_id": 1001,
+  "data_hora": "2026-10-20T10:30:00",
+  "itens": [
+    { "produto_id": 1, "quantidade": 2 },
+    { "produto_id": 2, "quantidade": 1 }
+  ]
+}
