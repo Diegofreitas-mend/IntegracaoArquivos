@@ -66,7 +66,7 @@ class RepositorioEstoque:
     def listar(self) -> list[ProdutoEstoque]:
         return sorted(self.produtos.values(), key=lambda p: p.produto_id)
 
-    def motivo_duplicidade(self, hash_arquivo: str, venda_id: int | str | None = None) -> str | None:
+    def motivo_duplicidade(self, hash_arquivo: str, venda_id: int | None = None) -> str | None:
         """Retorna o motivo se o arquivo/venda já foi processado, senão None."""
         for registro in self.processados:
             if registro["hash"] == hash_arquivo:

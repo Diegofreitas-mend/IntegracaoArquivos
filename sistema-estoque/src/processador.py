@@ -77,7 +77,14 @@ def processar_arquivo(caminho: Path, repositorio: RepositorioEstoque, pastas: Pa
 
         # RF04: atualiza estoque + registra o arquivo (gravação atômica)
         repositorio.aplicar_venda(venda, nome, hash_arquivo)
-        _mover(caminho, pastas.processados)
+        try:
+            _mover(caminho, pastas.processados)
+        except OSError as erro:
+            # A baixa e o registro já foram persistidos. Não classificar como
+            # rejeitada uma venda que já foi aplicada ao estoque.
+            motivo = f"venda processada, mas não foi possível mover o arquivo: {erro}"
+            logger.error("PROCESSADO COM AVISO | %s | %s", nome, motivo)
+            return Resultado(nome, Status.PROCESSADO, motivo)
         resumo = ", ".join(f"produto {i.produto_id} -{i.quantidade}" for i in venda.itens)
         logger.info("PROCESSADO | %s | venda %s | %s", nome, venda.venda_id, resumo)
         return Resultado(nome, Status.PROCESSADO)
