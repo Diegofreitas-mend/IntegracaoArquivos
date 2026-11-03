@@ -25,3 +25,7 @@ __pycache__/
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
+
+# Arquivos de venda gerados em tempo de execução (as pastas ficam via .gitkeep)
+integracao/*/*.json
+integracao/*/*.tmp
