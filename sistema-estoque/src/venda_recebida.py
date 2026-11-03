@@ -11,6 +11,6 @@ class ItemRecebido:
 class VendaRecebida:
     """Venda já validada, lida de um arquivo JSON vindo do Sistema de Vendas."""
 
-    venda_id: int | str
-    data_hora: str | None
+    venda_id: int
+    data_hora: str
     itens: tuple[ItemRecebido, ...]

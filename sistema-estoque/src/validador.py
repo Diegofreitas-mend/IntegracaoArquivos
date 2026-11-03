@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from src.produto_estoque import ProdutoEstoque
 from src.venda_recebida import ItemRecebido, VendaRecebida
 
@@ -31,12 +33,16 @@ def validar_venda(
     venda_id = dados.get("venda_id")
     if venda_id is None or isinstance(venda_id, bool):
         raise ErroValidacao("campo 'venda_id' ausente ou inválido")
-    if not (_eh_inteiro(venda_id) or (isinstance(venda_id, str) and venda_id.strip())):
+    if not _eh_inteiro(venda_id):
         raise ErroValidacao("campo 'venda_id' ausente ou inválido")
 
     data_hora = dados.get("data_hora")
-    if data_hora is not None and not isinstance(data_hora, str):
-        raise ErroValidacao("campo 'data_hora' deve ser texto")
+    if not isinstance(data_hora, str):
+        raise ErroValidacao("campo 'data_hora' ausente ou inválido; deve ser texto")
+    try:
+        datetime.fromisoformat(data_hora)
+    except ValueError as erro:
+        raise ErroValidacao("campo 'data_hora' deve estar no formato ISO 8601") from erro
 
     itens_brutos = dados.get("itens")
     if not isinstance(itens_brutos, list) or not itens_brutos:

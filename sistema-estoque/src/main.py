@@ -31,13 +31,19 @@ def processar(repositorio: RepositorioEstoque, pastas: Pastas) -> None:
         return
     ok = sum(r.status is Status.PROCESSADO for r in resultados)
     print(f"\n{len(resultados)} arquivo(s) lido(s): {ok} processado(s), {len(resultados) - ok} com erro/duplicado.")
+    for resultado in resultados:
+        detalhe = f" — {resultado.motivo}" if resultado.motivo else ""
+        print(f"{resultado.status.value.upper()} | {resultado.arquivo}{detalhe}")
 
 
 def monitorar(repositorio: RepositorioEstoque, pastas: Pastas) -> None:
     print(f"\nMonitorando {pastas.entrada} a cada {INTERVALO_MONITOR}s. Ctrl+C para parar.")
     try:
         while True:
-            processar_pendentes(repositorio, pastas)
+            resultados = processar_pendentes(repositorio, pastas)
+            for resultado in resultados:
+                detalhe = f" — {resultado.motivo}" if resultado.motivo else ""
+                print(f"{resultado.status.value.upper()} | {resultado.arquivo}{detalhe}")
             time.sleep(INTERVALO_MONITOR)
     except KeyboardInterrupt:
         print("\nMonitoramento encerrado.")
