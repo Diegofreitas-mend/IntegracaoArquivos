@@ -1,9 +1,11 @@
+import argparse
 import time
+from pathlib import Path
 
-from src.config import Pastas
-from src.log_config import configurar_logging
-from src.processador import Status, processar_pendentes
-from src.repositorio_estoque import ErroRepositorio, RepositorioEstoque
+from .config import Pastas
+from .log_config import configurar_logging
+from .processador import Status, processar_pendentes
+from .repositorio_estoque import ErroRepositorio, RepositorioEstoque
 
 INTERVALO_MONITOR = 3  # segundos
 
@@ -30,20 +32,26 @@ def processar(repositorio: RepositorioEstoque, pastas: Pastas) -> None:
         print("\nNenhum arquivo na pasta de entrada.")
         return
     ok = sum(r.status is Status.PROCESSADO for r in resultados)
-    print(f"\n{len(resultados)} arquivo(s) lido(s): {ok} processado(s), {len(resultados) - ok} com erro/duplicado.")
+    print(
+        f"\n{len(resultados)} arquivo(s) lido(s): {ok} processado(s), {len(resultados) - ok} com erro/duplicado."
+    )
     for resultado in resultados:
         detalhe = f" — {resultado.motivo}" if resultado.motivo else ""
         print(f"{resultado.status.value.upper()} | {resultado.arquivo}{detalhe}")
 
 
 def monitorar(repositorio: RepositorioEstoque, pastas: Pastas) -> None:
-    print(f"\nMonitorando {pastas.entrada} a cada {INTERVALO_MONITOR}s. Ctrl+C para parar.")
+    print(
+        f"\nMonitorando {pastas.entrada} a cada {INTERVALO_MONITOR}s. Ctrl+C para parar."
+    )
     try:
         while True:
             resultados = processar_pendentes(repositorio, pastas)
             for resultado in resultados:
                 detalhe = f" — {resultado.motivo}" if resultado.motivo else ""
-                print(f"{resultado.status.value.upper()} | {resultado.arquivo}{detalhe}")
+                print(
+                    f"{resultado.status.value.upper()} | {resultado.arquivo}{detalhe}"
+                )
             time.sleep(INTERVALO_MONITOR)
     except KeyboardInterrupt:
         print("\nMonitoramento encerrado.")
@@ -79,7 +87,14 @@ def repor_estoque(repositorio: RepositorioEstoque) -> None:
 
 
 def main() -> None:
-    pastas = Pastas.padrao()
+    parser = argparse.ArgumentParser(description="Arvendro - terminal do estoque")
+    parser.add_argument(
+        "--dados", type=Path, help="Raiz alternativa para os dados de demonstração"
+    )
+    argumentos = parser.parse_args()
+    pastas = (
+        Pastas.no_projeto(argumentos.dados) if argumentos.dados else Pastas.padrao()
+    )
     pastas.criar()
     configurar_logging(pastas.arquivo_log)
     repositorio = RepositorioEstoque(pastas.arquivo_estoque)

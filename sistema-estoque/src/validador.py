@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from src.produto_estoque import ProdutoEstoque
-from src.venda_recebida import ItemRecebido, VendaRecebida
+from .produto_estoque import ProdutoEstoque
+from .venda_recebida import ItemRecebido, VendaRecebida
 
 
 class ErroValidacao(Exception):
@@ -10,7 +10,7 @@ class ErroValidacao(Exception):
 
 def _eh_inteiro(valor) -> bool:
     # bool é subclasse de int em Python; True/False não são quantidades válidas.
-    return isinstance(valor, int) and not isinstance(valor, bool)
+    return type(valor) is int
 
 
 def validar_venda(
@@ -31,9 +31,7 @@ def validar_venda(
         raise ErroValidacao("o conteúdo do arquivo deve ser um objeto JSON")
 
     venda_id = dados.get("venda_id")
-    if venda_id is None or isinstance(venda_id, bool):
-        raise ErroValidacao("campo 'venda_id' ausente ou inválido")
-    if not _eh_inteiro(venda_id):
+    if not _eh_inteiro(venda_id) or venda_id <= 0:
         raise ErroValidacao("campo 'venda_id' ausente ou inválido")
 
     data_hora = dados.get("data_hora")

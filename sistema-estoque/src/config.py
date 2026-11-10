@@ -22,13 +22,18 @@ class Pastas:
 
     @classmethod
     def padrao(cls) -> "Pastas":
-        integracao = RAIZ_REPOSITORIO / "integracao"
+        return cls.no_projeto(RAIZ_REPOSITORIO)
+
+    @classmethod
+    def no_projeto(cls, raiz: Path) -> "Pastas":
+        raiz = Path(raiz)
+        integracao = raiz / "integracao"
         return cls(
             entrada=integracao / "entrada",
             processados=integracao / "processados",
             erros=integracao / "erros",
-            arquivo_estoque=RAIZ_ESTOQUE / "data" / "estoque.json",
-            arquivo_log=RAIZ_ESTOQUE / "logs" / "estoque.log",
+            arquivo_estoque=raiz / "sistema-estoque" / "data" / "estoque.json",
+            arquivo_log=raiz / "sistema-estoque" / "logs" / "estoque.log",
         )
 
     @classmethod

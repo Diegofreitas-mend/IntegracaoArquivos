@@ -7,10 +7,10 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 
-from src.config import Pastas
-from src.log_config import NOME_LOGGER
-from src.repositorio_estoque import RepositorioEstoque
-from src.validador import ErroValidacao, validar_venda
+from .config import Pastas
+from .log_config import NOME_LOGGER
+from .repositorio_estoque import RepositorioEstoque
+from .validador import ErroValidacao, validar_venda
 
 logger = logging.getLogger(NOME_LOGGER)
 
@@ -67,13 +67,16 @@ def processar_arquivo(caminho: Path, repositorio: RepositorioEstoque, pastas: Pa
         except ValueError as erro:  # inclui JSONDecodeError e UnicodeDecodeError
             return _rejeitar(caminho, pastas, Status.ERRO, f"JSON malformado: {erro}")
 
-        # RF03: regras de negócio
-        venda = validar_venda(dados, repositorio.produtos)
-
         # RF05: duplicidade por venda_id (mesma venda em arquivos diferentes)
-        motivo = repositorio.motivo_duplicidade(hash_arquivo, venda.venda_id)
+        venda_id = dados.get("venda_id") if isinstance(dados, dict) else None
+        motivo = repositorio.motivo_duplicidade(
+            hash_arquivo, venda_id if type(venda_id) is int else None
+        )
         if motivo:
             return _rejeitar(caminho, pastas, Status.DUPLICADO, motivo)
+
+        # Valida o saldo somente para vendas que ainda não foram aplicadas.
+        venda = validar_venda(dados, repositorio.produtos)
 
         # RF04: atualiza estoque + registra o arquivo (gravação atômica)
         repositorio.aplicar_venda(venda, nome, hash_arquivo)

@@ -31,6 +31,12 @@ def test_venda_id_ausente(produtos):
         validar_venda({"itens": [{"produto_id": 1, "quantidade": 1}]}, produtos)
 
 
+@pytest.mark.parametrize("venda_id", [0, -1, True, None, "1", 1.5])
+def test_venda_id_invalido(produtos, venda_id):
+    with pytest.raises(ErroValidacao, match="venda_id"):
+        validar_venda(venda([{"produto_id": 1, "quantidade": 1}], venda_id), produtos)
+
+
 @pytest.mark.parametrize("itens", [None, [], "abc"])
 def test_itens_ausentes_ou_vazios(produtos, itens):
     with pytest.raises(ErroValidacao, match="itens"):

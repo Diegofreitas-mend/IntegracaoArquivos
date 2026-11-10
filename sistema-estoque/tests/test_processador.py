@@ -129,6 +129,14 @@ def test_duplicidade_sobrevive_a_reinicio(pastas, repo):
     assert resultado.status is Status.DUPLICADO
 
 
+def test_reenvio_por_id_e_duplicado_mesmo_sem_saldo(pastas, repo):
+    primeiro = escrever_venda(pastas, "a.json", 10, [{"produto_id": 1, "quantidade": 50}])
+    assert processar_arquivo(primeiro, repo, pastas).status is Status.PROCESSADO
+    reenvio = escrever_venda(pastas, "b.json", 10, [{"produto_id": 1, "quantidade": 1}])
+    assert processar_arquivo(reenvio, repo, pastas).status is Status.DUPLICADO
+    assert repo.produtos[1].quantidade == 0
+
+
 def test_erro_em_um_arquivo_nao_interrompe_os_demais(pastas, repo):
     (pastas.entrada / "1_ruim.json").write_text("nada de json", encoding="utf-8")
     escrever_venda(pastas, "2_boa.json", 9, [{"produto_id": 1, "quantidade": 1}])

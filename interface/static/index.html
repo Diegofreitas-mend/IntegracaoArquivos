@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#22383a" />
+    <title>Arvendro Gestão</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/estilos.css" />
+    <script src="/acesso.js" defer></script>
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#conteudo">Ir para o conteúdo</a>
+    <aside
+      class="app-sidebar"
+      id="app-sidebar"
+      aria-label="Navegação principal"
+      hidden
+    >
+      <div class="sidebar-heading">
+        <a href="#inicio" class="brand"
+          ><img
+            src="/marca.svg"
+            class="brand-logo"
+            alt="Arvendro"
+            width="180"
+            height="42"
+          /><small>GESTÃO COMERCIAL</small></a
+        >
+        <button
+          class="sidebar-close"
+          data-action="close-menu"
+          aria-label="Fechar menu"
+        >
+          ×
+        </button>
+      </div>
+      <nav class="main-nav">
+        <p class="nav-section">GERAL</p>
+        <a href="#inicio" data-route="inicio"
+          ><span data-nav-icon="home"></span><span>Visão geral</span></a
+        >
+        <p class="nav-section">COMERCIAL</p>
+        <a href="#nova-venda" data-route="nova-venda"
+          ><span data-nav-icon="bag"></span><span>Nova venda</span
+          ><span id="nav-cart" class="nav-count" hidden></span
+        ></a>
+        <a href="#historico" data-route="historico"
+          ><span data-nav-icon="clock"></span
+          ><span>Histórico de vendas</span></a
+        >
+        <a href="#catalogo" data-route="catalogo"
+          ><span data-nav-icon="grid"></span><span>Produtos</span></a
+        >
+        <p class="nav-section">OPERAÇÃO</p>
+        <a href="#estoque" data-route="estoque"
+          ><span data-nav-icon="box"></span><span>Estoque</span></a
+        >
+        <a href="#integracao" data-route="integracao"
+          ><span data-nav-icon="arrows"></span><span>Integração</span
+          ><span id="nav-pending" class="nav-count" hidden></span
+        ></a>
+      </nav>
+      <div class="sidebar-footer">
+        <span class="local-indicator"></span>Ambiente local
+      </div>
+    </aside>
+    <button
+      class="sidebar-backdrop"
+      data-action="close-menu"
+      aria-label="Fechar navegação"
+    ></button>
+    <header class="app-header" hidden>
+      <div class="header-inner">
+        <button
+          class="menu-toggle"
+          data-action="toggle-menu"
+          aria-label="Abrir menu"
+          aria-controls="app-sidebar"
+          aria-expanded="false"
+        >
+          <span data-nav-icon="menu"></span>
+        </button>
+        <div class="breadcrumb">
+          <span>Arvendro Gestão</span><span class="breadcrumb-separator">/</span
+          ><strong id="breadcrumb">Visão geral</strong>
+        </div>
+        <div class="account-menu">
+          <span
+            class="account-avatar"
+            id="account-avatar"
+            aria-hidden="true"
+          ></span>
+          <div class="account-details">
+            <strong id="account-name"></strong
+            ><small id="account-login"></small>
+          </div>
+          <button class="text-button" data-action="logout">Sair</button>
+        </div>
+      </div>
+    </header>
+    <main id="conteudo" tabindex="-1" aria-busy="true">
+      <div class="loading-state">Carregando dados…</div>
+    </main>
+    <div
+      id="notifications"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    ></div>
+    <dialog id="modal"><div id="modal-content"></div></dialog>
+  </body>
+</html>

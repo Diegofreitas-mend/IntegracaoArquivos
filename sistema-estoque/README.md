@@ -6,6 +6,24 @@ os arquivos em `processados/` ou `erros/`.
 
 ## Como executar
 
+A interface visual compartilhada está disponível pela raiz do repositório:
+
+```bash
+python app.py
+```
+
+Abra http://127.0.0.1:8000 e escolha **Estoque**. É possível consultar saldos,
+cadastrar produtos, repor unidades e sincronizar as vendas. A interface mantém
+as regras de validação, persistência e duplicidade descritas abaixo. Use somente
+uma interface por pasta de dados; não execute o terminal e o servidor ao mesmo
+tempo para modificar o mesmo estoque.
+
+O menu de terminal continua disponível:
+
+Na raiz, também é possível usar `python estoque.py`. Para usar dados separados,
+execute `python estoque.py --dados CAMINHO`, com a mesma raiz de dados
+informada ao terminal de vendas.
+
 ```bash
 cd sistema-estoque
 pip install -r requirements.txt   # só o pytest

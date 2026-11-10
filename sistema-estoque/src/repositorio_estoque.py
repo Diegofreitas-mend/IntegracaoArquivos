@@ -3,8 +3,8 @@ import os
 from datetime import datetime
 from pathlib import Path
 
-from src.produto_estoque import ProdutoEstoque
-from src.venda_recebida import VendaRecebida
+from .produto_estoque import ProdutoEstoque
+from .venda_recebida import VendaRecebida
 
 PRODUTOS_INICIAIS = [
     ProdutoEstoque(1, "Mouse", 50),
@@ -103,6 +103,12 @@ class RepositorioEstoque:
         self.produtos, self.processados = novos, registros
 
     def cadastrar_produto(self, produto_id: int, nome: str, quantidade: int = 0) -> None:
+        if type(produto_id) is not int or produto_id <= 0:
+            raise ErroRepositorio("ID deve ser um inteiro positivo")
+        if not isinstance(nome, str):
+            raise ErroRepositorio("nome deve ser um texto")
+        if type(quantidade) is not int:
+            raise ErroRepositorio("quantidade deve ser um inteiro")
         if produto_id in self.produtos:
             raise ErroRepositorio(f"produto {produto_id} já existe")
         if not nome.strip():
@@ -115,6 +121,8 @@ class RepositorioEstoque:
         self.produtos = novos
 
     def repor(self, produto_id: int, quantidade: int) -> None:
+        if type(produto_id) is not int or type(quantidade) is not int:
+            raise ErroRepositorio("ID e quantidade devem ser inteiros")
         if produto_id not in self.produtos:
             raise ErroRepositorio(f"produto {produto_id} não existe")
         if quantidade <= 0:
