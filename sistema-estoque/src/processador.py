@@ -7,6 +7,8 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 
+from banco import ErroBanco
+
 from .config import Pastas
 from .log_config import NOME_LOGGER
 from .repositorio_estoque import RepositorioEstoque
@@ -46,8 +48,10 @@ def _mover(origem: Path, pasta_destino: Path) -> Path:
 def processar_arquivo(caminho: Path, repositorio: RepositorioEstoque, pastas: Pastas) -> Resultado:
     """Processa UM arquivo da pasta de entrada (RF03, RF04 e RF05).
 
-    Nunca levanta exceção: qualquer falha manda o arquivo para a pasta de erros
-    e registra o motivo no log, para não travar a fila dos demais arquivos.
+    Qualquer falha do arquivo o manda para a pasta de erros e registra o motivo
+    no log, para não travar a fila dos demais arquivos. A exceção é o banco fora
+    do ar (ErroBanco): o problema não é do arquivo, então ele fica na entrada
+    para a próxima tentativa.
     """
     caminho = Path(caminho)
     nome = caminho.name
@@ -78,7 +82,7 @@ def processar_arquivo(caminho: Path, repositorio: RepositorioEstoque, pastas: Pa
         # Valida o saldo somente para vendas que ainda não foram aplicadas.
         venda = validar_venda(dados, repositorio.produtos)
 
-        # RF04: atualiza estoque + registra o arquivo (gravação atômica)
+        # RF04: atualiza estoque + registra o arquivo (mesma transação)
         repositorio.aplicar_venda(venda, nome, hash_arquivo)
         try:
             _mover(caminho, pastas.processados)
@@ -94,6 +98,9 @@ def processar_arquivo(caminho: Path, repositorio: RepositorioEstoque, pastas: Pa
 
     except ErroValidacao as erro:
         return _rejeitar(caminho, pastas, Status.ERRO, str(erro))
+    except ErroBanco:
+        logger.error("Banco indisponível; %s continua na entrada", nome)
+        raise
     except Exception as erro:  # noqa: BLE001 - disponibilidade: não derrubar a fila
         logger.exception("Falha inesperada ao processar %s", nome)
         return _rejeitar(caminho, pastas, Status.ERRO, f"falha inesperada: {erro}")

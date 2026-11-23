@@ -2,7 +2,9 @@ import argparse
 import time
 from pathlib import Path
 
-from .config import Pastas
+from banco import Banco, ErroBanco
+
+from .config import RAIZ_REPOSITORIO, Pastas
 from .log_config import configurar_logging
 from .processador import Status, processar_pendentes
 from .repositorio_estoque import ErroRepositorio, RepositorioEstoque
@@ -46,7 +48,11 @@ def monitorar(repositorio: RepositorioEstoque, pastas: Pastas) -> None:
     )
     try:
         while True:
-            resultados = processar_pendentes(repositorio, pastas)
+            try:
+                resultados = processar_pendentes(repositorio, pastas)
+            except ErroBanco as erro:
+                print(f"Banco indisponível, nova tentativa em {INTERVALO_MONITOR}s: {erro}")
+                resultados = []
             for resultado in resultados:
                 detalhe = f" — {resultado.motivo}" if resultado.motivo else ""
                 print(
@@ -92,12 +98,17 @@ def main() -> None:
         "--dados", type=Path, help="Raiz alternativa para os dados de demonstração"
     )
     argumentos = parser.parse_args()
-    pastas = (
-        Pastas.no_projeto(argumentos.dados) if argumentos.dados else Pastas.padrao()
-    )
+    raiz = argumentos.dados or RAIZ_REPOSITORIO
+    pastas = Pastas.no_projeto(raiz)
     pastas.criar()
     configurar_logging(pastas.arquivo_log)
-    repositorio = RepositorioEstoque(pastas.arquivo_estoque)
+    banco = Banco.do_projeto(raiz, pastas.arquivo_estoque)
+    try:
+        repositorio = RepositorioEstoque(banco)
+    except ErroBanco as erro:
+        print(f"Não foi possível acessar o banco de dados: {erro}")
+        return
+    print(f"Banco de dados: {banco.descricao}")
 
     while True:
         print("\n=== Sistema de Estoque ===")
@@ -109,21 +120,25 @@ def main() -> None:
         print("0 - Sair")
         opcao = input("Opção: ").strip()
 
-        if opcao == "1":
-            mostrar_estoque(repositorio)
-        elif opcao == "2":
-            processar(repositorio, pastas)
-        elif opcao == "3":
-            monitorar(repositorio, pastas)
-        elif opcao == "4":
-            cadastrar_produto(repositorio)
-        elif opcao == "5":
-            repor_estoque(repositorio)
-        elif opcao == "0":
-            print("Até logo!")
-            break
-        else:
-            print("Opção inválida.")
+        try:
+            if opcao == "1":
+                mostrar_estoque(repositorio)
+            elif opcao == "2":
+                processar(repositorio, pastas)
+            elif opcao == "3":
+                monitorar(repositorio, pastas)
+            elif opcao == "4":
+                cadastrar_produto(repositorio)
+            elif opcao == "5":
+                repor_estoque(repositorio)
+            elif opcao == "0":
+                print("Até logo!")
+                break
+            else:
+                print("Opção inválida.")
+        except ErroBanco as erro:
+            print(f"Banco indisponível; a operação não foi concluída: {erro}")
+    banco.fechar()
 
 
 if __name__ == "__main__":

@@ -1,17 +1,27 @@
-"""Conta local e sessões de acesso. Não depende de serviços externos."""
+"""Contas de acesso (no banco de dados) e sessões (em memória)."""
 
 import hashlib
 import hmac
-import json
-import os
 import re
 import secrets
 import time
-from pathlib import Path
+
+from banco import Banco, ErroIntegridade
 
 COOKIE_SESSAO = "ve_sessao"
 DURACAO_SESSAO = 8 * 60 * 60
 ITERACOES_SENHA = 600_000
+
+# A senha nunca é gravada: só o salt e o hash PBKDF2.
+TABELAS = {
+    "usuarios": (
+        "usuario TEXT PRIMARY KEY, "
+        "nome TEXT NOT NULL, "
+        "salt TEXT NOT NULL, "
+        "iteracoes INTEGER NOT NULL, "
+        "senha_hash TEXT NOT NULL"
+    ),
+}
 
 
 class ErroAcesso(Exception):
@@ -21,15 +31,17 @@ class ErroAcesso(Exception):
 
 
 class Autenticacao:
-    def __init__(self, arquivo: Path):
-        self.arquivo = arquivo
+    def __init__(self, banco: Banco):
+        self.banco = banco
+        banco.preparar(TABELAS)
         self.sessoes: dict[str, tuple[dict, float]] = {}
         self.falhas = 0
         self.bloqueado_ate = 0.0
 
     @property
     def configurada(self) -> bool:
-        return self.arquivo.exists()
+        with self.banco.transacao() as t:
+            return t.um("SELECT COUNT(*) FROM usuarios")[0] > 0
 
     @staticmethod
     def _hash(senha: str, salt: str, iteracoes: int = ITERACOES_SENHA) -> str:
@@ -52,16 +64,15 @@ class Autenticacao:
             raise ErroAcesso("O acesso já foi configurado. Entre com sua conta.", 409)
         return self.cadastrar(nome, usuario, senha)
 
-    def _carregar_contas(self) -> list[dict]:
-        if not self.arquivo.exists():
-            return []
-        dados = json.loads(self.arquivo.read_text(encoding="utf-8"))
-        # Preserva a conta criada na versão de acesso único, incluindo seu hash.
-        if isinstance(dados, dict) and "usuario" in dados:
-            return [dados]
-        if not isinstance(dados, dict) or not isinstance(dados.get("usuarios"), list):
-            raise ValueError("O arquivo de contas é inválido.")
-        return dados["usuarios"]
+    def _buscar(self, usuario: str) -> dict | None:
+        with self.banco.transacao() as t:
+            linha = t.um(
+                "SELECT nome, usuario, salt, iteracoes, senha_hash FROM usuarios WHERE usuario = ?",
+                (usuario,),
+            )
+        if linha is None:
+            return None
+        return dict(zip(("nome", "usuario", "salt", "iteracoes", "senha_hash"), linha))
 
     def cadastrar(self, nome, usuario, senha) -> tuple[str, dict]:
         if not isinstance(nome, str) or not 1 <= len(nome.strip()) <= 80:
@@ -74,12 +85,6 @@ class Autenticacao:
             )
         if not isinstance(senha, str) or not 8 <= len(senha) <= 128:
             raise ValueError("A senha deve ter entre 8 e 128 caracteres.")
-        contas = self._carregar_contas()
-        if any(conta["usuario"] == usuario.casefold() for conta in contas):
-            raise ErroAcesso(
-                "Este usuário já está cadastrado. Escolha outro ou entre na sua conta.",
-                409,
-            )
         salt = secrets.token_hex(16)
         conta = {
             "nome": nome.strip(),
@@ -88,13 +93,18 @@ class Autenticacao:
             "iteracoes": ITERACOES_SENHA,
             "senha_hash": self._hash(senha, salt),
         }
-        self.arquivo.parent.mkdir(parents=True, exist_ok=True)
-        temporario = self.arquivo.with_suffix(".tmp")
-        temporario.write_text(
-            json.dumps({"usuarios": contas + [conta]}, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-        os.replace(temporario, self.arquivo)
+        try:
+            with self.banco.transacao() as t:
+                t.executar(
+                    "INSERT INTO usuarios (usuario, nome, salt, iteracoes, senha_hash) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (conta["usuario"], conta["nome"], salt, ITERACOES_SENHA, conta["senha_hash"]),
+                )
+        except ErroIntegridade as erro:
+            raise ErroAcesso(
+                "Este usuário já está cadastrado. Escolha outro ou entre na sua conta.",
+                409,
+            ) from erro
         return self._criar_sessao(conta)
 
     def entrar(self, usuario, senha) -> tuple[str, dict]:
@@ -108,14 +118,7 @@ class Autenticacao:
             or len(senha) > 128
         ):
             self._registrar_falha()
-        conta = next(
-            (
-                conta
-                for conta in self._carregar_contas()
-                if conta["usuario"] == usuario.strip().casefold()
-            ),
-            None,
-        )
+        conta = self._buscar(usuario.strip().casefold())
         # Mantém o custo de verificação quando o usuário não existe.
         salt = conta["salt"] if conta else "0" * 32
         iteracoes = conta["iteracoes"] if conta else ITERACOES_SENHA

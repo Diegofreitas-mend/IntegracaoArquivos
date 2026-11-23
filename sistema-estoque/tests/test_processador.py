@@ -2,6 +2,7 @@ import json
 
 import pytest
 
+from banco import Banco, ErroBanco
 from src.config import Pastas
 from src.processador import Status, processar_arquivo, processar_pendentes
 from src.repositorio_estoque import RepositorioEstoque
@@ -16,7 +17,7 @@ def pastas(tmp_path):
 
 @pytest.fixture
 def repo(pastas):
-    return RepositorioEstoque(pastas.arquivo_estoque)
+    return RepositorioEstoque(Banco(pastas.arquivo_estoque))
 
 
 def escrever_venda(pastas, nome, venda_id, itens):
@@ -123,7 +124,7 @@ def test_duplicidade_sobrevive_a_reinicio(pastas, repo):
     itens = [{"produto_id": 1, "quantidade": 2}]
     processar_arquivo(escrever_venda(pastas, "a.json", 8, itens), repo, pastas)
 
-    repo_novo = RepositorioEstoque(pastas.arquivo_estoque)  # "reabre" o sistema
+    repo_novo = RepositorioEstoque(Banco(pastas.arquivo_estoque))  # "reabre" o sistema
     resultado = processar_arquivo(escrever_venda(pastas, "a.json", 8, itens), repo_novo, pastas)
 
     assert resultado.status is Status.DUPLICADO
@@ -144,6 +145,21 @@ def test_erro_em_um_arquivo_nao_interrompe_os_demais(pastas, repo):
     resultados = processar_pendentes(repo, pastas)
 
     assert [r.status for r in resultados] == [Status.ERRO, Status.PROCESSADO]
+
+
+def test_banco_fora_do_ar_mantem_arquivo_na_entrada(pastas, repo, monkeypatch):
+    caminho = escrever_venda(pastas, "v.json", 11, [{"produto_id": 1, "quantidade": 1}])
+
+    def fora_do_ar(*_):
+        raise ErroBanco("sem conexão")
+
+    monkeypatch.setattr(repo, "motivo_duplicidade", fora_do_ar)
+    with pytest.raises(ErroBanco):
+        processar_pendentes(repo, pastas)
+
+    # O problema não é do arquivo: ele não pode ir para erros/.
+    assert caminho.exists()
+    assert list(pastas.erros.iterdir()) == []
 
 
 def test_ignora_arquivos_que_nao_sao_json(pastas, repo):

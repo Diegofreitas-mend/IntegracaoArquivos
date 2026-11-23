@@ -1,9 +1,10 @@
-import json
 from pathlib import Path
+
+from banco import Banco
 
 from .item_venda import ItemVenda
 from .produto import Produto
-from .repositorio_vendas import RepositorioVendas, gravar_json
+from .repositorio_vendas import RepositorioVendas
 from .venda import Venda
 
 CATALOGO_INICIAL = ((1, "Mouse", 79.90), (2, "Teclado", 149.90), (3, "Monitor", 899.90))
@@ -12,26 +13,17 @@ PRECOS_INICIAIS = {pid: preco for pid, _, preco in CATALOGO_INICIAL}
 
 class ServicoVendas:
     def __init__(self, raiz: Path):
-        self.precos = raiz / "sistema-vendas" / "data" / "precos.json"
+        self.banco = Banco.do_projeto(raiz, raiz / "sistema-vendas" / "data" / "vendas.db")
         self.repositorio = RepositorioVendas(
-            raiz / "sistema-vendas" / "data" / "vendas", raiz / "integracao" / "saida"
+            self.banco, raiz / "integracao" / "saida", PRECOS_INICIAIS
         )
 
     def carregar_precos(self) -> dict[int, float]:
-        if not self.precos.exists():
-            return PRECOS_INICIAIS.copy()
-        return {
-            int(pid): valor
-            for pid, valor in json.loads(
-                self.precos.read_text(encoding="utf-8")
-            ).items()
-        }
+        return self.repositorio.precos()
 
     def definir_preco(self, produto: dict, preco) -> None:
         validado = Produto(produto["produto_id"], produto["nome"], preco)
-        precos = self.carregar_precos()
-        precos[validado.produto_id] = validado.preco
-        gravar_json(self.precos, precos)
+        self.repositorio.definir_preco(validado.produto_id, validado.preco)
 
     def catalogo_terminal(self) -> list[dict]:
         """Catálogo local de demonstração, sem importar ou consultar o estoque.

@@ -5,6 +5,8 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from banco import Banco
+
 from .aplicacao import Aplicacao, ErroRepositorio
 from .autenticacao import Autenticacao, COOKIE_SESSAO, DURACAO_SESSAO, ErroAcesso
 
@@ -20,7 +22,7 @@ ARQUIVOS = {
 
 def criar_servidor(raiz: Path, porta: int = 8000) -> HTTPServer:
     aplicacao = Aplicacao(raiz)
-    autenticacao = Autenticacao(raiz / "dados" / "acesso.json")
+    autenticacao = Autenticacao(Banco.do_projeto(raiz, raiz / "dados" / "acesso.db"))
     estaticos = Path(__file__).parent / "static"
 
     class Handler(BaseHTTPRequestHandler):
@@ -96,7 +98,7 @@ def criar_servidor(raiz: Path, porta: int = 8000) -> HTTPServer:
                 self.json(
                     500,
                     {
-                        "erro": "Não foi possível ler os dados locais. Confira o terminal e os arquivos de dados."
+                        "erro": "Não foi possível ler os dados. Confira o terminal e a conexão com o banco de dados."
                     },
                 )
 
@@ -162,9 +164,10 @@ def criar_servidor(raiz: Path, porta: int = 8000) -> HTTPServer:
                 self.json(
                     500,
                     {
-                        "erro": "Falha ao gravar os arquivos. Atualize a tela antes de tentar novamente; se a venda já estiver no histórico, use Sincronizar vendas."
+                        "erro": "Falha ao gravar os dados. Atualize a tela antes de tentar novamente; se a venda já estiver no histórico, use Sincronizar vendas."
                     },
                 )
 
-    # Um único servidor serializa as alterações nos arquivos JSON.
+    # Um único servidor atende uma requisição por vez, então cada componente
+    # pode reaproveitar a mesma conexão com o banco.
     return HTTPServer(("127.0.0.1", porta), Handler)
