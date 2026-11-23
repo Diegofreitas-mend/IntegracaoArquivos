@@ -7,6 +7,8 @@ import unittest
 from importlib import import_module
 from pathlib import Path
 
+from banco import Banco
+
 ServicoVendas = import_module("sistema-vendas.src.servico").ServicoVendas
 RAIZ = Path(__file__).resolve().parents[1]
 
@@ -113,13 +115,10 @@ class TerminalVendasTest(unittest.TestCase):
             env={**os.environ, "PYTHONIOENCODING": "utf-8"},
         )
         self.assertEqual(resultado.returncode, 0, resultado.stderr)
-        persistido = json.loads(
-            (self.dados / "sistema-estoque" / "data" / "estoque.json").read_text(
-                encoding="utf-8"
-            )
-        )
-        mouse = next(p for p in persistido["produtos"] if p["produto_id"] == 1)
-        self.assertEqual(mouse["quantidade"], 48)
+        banco = Banco(self.dados / "sistema-estoque" / "data" / "estoque.db")
+        with banco.transacao() as t:
+            mouse = t.um("SELECT quantidade FROM estoque_produtos WHERE produto_id = 1")
+        self.assertEqual(mouse[0], 48)
         self.assertTrue(
             (self.dados / "integracao" / "processados" / origem.name).exists()
         )

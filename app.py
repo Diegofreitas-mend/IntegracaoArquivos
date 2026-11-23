@@ -3,6 +3,7 @@
 import argparse
 from pathlib import Path
 
+from banco import ErroBanco, ler_url
 from interface.servidor import criar_servidor
 
 
@@ -16,8 +17,15 @@ def main() -> None:
     )
     argumentos = parser.parse_args()
     raiz = argumentos.dados or Path(__file__).resolve().parent
-    with criar_servidor(raiz, argumentos.porta) as servidor:
+    try:
+        servidor = criar_servidor(raiz, argumentos.porta)
+    except ErroBanco as erro:
+        print(f"Não foi possível acessar o banco de dados: {erro}")
+        return
+    with servidor:
         print(f"Arvendro Gestão: http://127.0.0.1:{servidor.server_port}", flush=True)
+        banco = "Supabase (PostgreSQL)" if ler_url(raiz) else "SQLite local, sem .env"
+        print(f"Banco de dados: {banco}", flush=True)
         print(
             "Use Ctrl+C para encerrar. Execute apenas uma instância para cada pasta de dados.",
             flush=True,

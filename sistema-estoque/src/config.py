@@ -32,7 +32,7 @@ class Pastas:
             entrada=integracao / "entrada",
             processados=integracao / "processados",
             erros=integracao / "erros",
-            arquivo_estoque=raiz / "sistema-estoque" / "data" / "estoque.json",
+            arquivo_estoque=raiz / "sistema-estoque" / "data" / "estoque.db",
             arquivo_log=raiz / "sistema-estoque" / "logs" / "estoque.log",
         )
 
@@ -43,7 +43,7 @@ class Pastas:
             entrada=base / "entrada",
             processados=base / "processados",
             erros=base / "erros",
-            arquivo_estoque=base / "data" / "estoque.json",
+            arquivo_estoque=base / "data" / "estoque.db",
             arquivo_log=base / "logs" / "estoque.log",
         )
 

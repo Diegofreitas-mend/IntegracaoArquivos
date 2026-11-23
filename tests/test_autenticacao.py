@@ -1,9 +1,9 @@
-import json
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from banco import Banco
 from interface.autenticacao import Autenticacao, DURACAO_SESSAO, ErroAcesso
 
 
@@ -11,11 +11,15 @@ class AutenticacaoTest(unittest.TestCase):
     def setUp(self):
         self.temporario = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporario.cleanup)
-        self.arquivo = Path(self.temporario.name) / "acesso.json"
-        self.auth = Autenticacao(self.arquivo)
+        self.arquivo = Path(self.temporario.name) / "acesso.db"
+        self.auth = Autenticacao(Banco(self.arquivo))
 
     def configurar(self):
         return self.auth.configurar("Operador", "operador", "SenhaTeste123!")
+
+    def contas(self) -> list[tuple]:
+        with Banco(self.arquivo).transacao() as t:
+            return t.todos("SELECT * FROM usuarios ORDER BY usuario")
 
     def test_primeiro_acesso_persiste_hash_e_retorna_apenas_perfil_publico(self):
         self.assertFalse(self.auth.configurada)
@@ -23,18 +27,17 @@ class AutenticacaoTest(unittest.TestCase):
         self.assertTrue(self.auth.configurada)
         self.assertEqual(usuario, {"nome": "Operador", "usuario": "operador"})
         self.assertEqual(self.auth.consultar(token), usuario)
-        conteudo = self.arquivo.read_text(encoding="utf-8")
-        self.assertNotIn("SenhaTeste123!", conteudo)
-        self.assertGreaterEqual(
-            json.loads(conteudo)["usuarios"][0]["iteracoes"], 600_000
-        )
+        (conta,) = self.contas()
+        self.assertNotIn("SenhaTeste123!", [str(valor) for valor in conta])
+        with Banco(self.arquivo).transacao() as t:
+            self.assertGreaterEqual(t.um("SELECT iteracoes FROM usuarios")[0], 600_000)
 
     def test_cadastra_contas_diferentes_e_cada_uma_usa_sua_senha(self):
         primeiro, _ = self.auth.cadastrar("Ana", "ana", "SenhaDaAna123!")
         segundo, _ = self.auth.cadastrar("Bruno", "bruno", "SenhaDoBruno123!")
         self.assertEqual(self.auth.consultar(primeiro)["nome"], "Ana")
         self.assertEqual(self.auth.consultar(segundo)["nome"], "Bruno")
-        reaberta = Autenticacao(self.arquivo)
+        reaberta = Autenticacao(Banco(self.arquivo))
         for usuario, senha in (
             ("ana", "SenhaDaAna123!"),
             ("bruno", "SenhaDoBruno123!"),
@@ -46,25 +49,13 @@ class AutenticacaoTest(unittest.TestCase):
 
     def test_cadastro_repetido_nao_sobrescreve_conta(self):
         self.configurar()
-        antes = self.arquivo.read_bytes()
+        antes = self.contas()
         with self.assertRaises(ErroAcesso) as erro:
             self.auth.cadastrar("Outra pessoa", "OPERADOR", "OutraSenha123!")
         self.assertEqual(erro.exception.status, 409)
-        self.assertEqual(self.arquivo.read_bytes(), antes)
+        self.assertEqual(self.contas(), antes)
 
-    def test_conta_da_versao_anterior_e_preservada_ao_cadastrar_outra(self):
-        self.configurar()
-        original = json.loads(self.arquivo.read_text(encoding="utf-8"))["usuarios"][0]
-        self.arquivo.write_text(json.dumps(original), encoding="utf-8")
-        reaberta = Autenticacao(self.arquivo)
-        reaberta.entrar("operador", "SenhaTeste123!")
-        reaberta.cadastrar("Outra pessoa", "outro", "OutraSenha123!")
-        contas = json.loads(self.arquivo.read_text(encoding="utf-8"))["usuarios"]
-        self.assertEqual(contas[0], original)
-        self.assertEqual(len(contas), 2)
-        reaberta.entrar("operador", "SenhaTeste123!")
-
-    def test_validacao_de_cadastro_nao_cria_arquivo(self):
+    def test_validacao_de_cadastro_nao_cria_conta(self):
         for nome, usuario, senha in (
             ("", "operador", "12345678"),
             ("Nome", "a", "12345678"),
@@ -74,15 +65,15 @@ class AutenticacaoTest(unittest.TestCase):
         ):
             with self.subTest(usuario=usuario), self.assertRaises(ValueError):
                 self.auth.configurar(nome, usuario, senha)
-        self.assertFalse(self.arquivo.exists())
+        self.assertFalse(self.auth.configurada)
 
     def test_conta_existente_nao_pode_ser_substituida(self):
         self.configurar()
-        antes = self.arquivo.read_bytes()
+        antes = self.contas()
         with self.assertRaises(ErroAcesso) as erro:
             self.auth.configurar("Outro", "outro", "OutraSenha123!")
         self.assertEqual(erro.exception.status, 409)
-        self.assertEqual(self.arquivo.read_bytes(), antes)
+        self.assertEqual(self.contas(), antes)
 
     def test_login_valida_senha_e_normaliza_usuario(self):
         self.configurar()
@@ -115,7 +106,7 @@ class AutenticacaoTest(unittest.TestCase):
 
     def test_reinicio_preserva_conta_mas_encerra_sessoes(self):
         token, _ = self.configurar()
-        reaberta = Autenticacao(self.arquivo)
+        reaberta = Autenticacao(Banco(self.arquivo))
         self.assertIsNone(reaberta.consultar(token))
         novo_token, usuario = reaberta.entrar("operador", "SenhaTeste123!")
         self.assertEqual(reaberta.consultar(novo_token), usuario)

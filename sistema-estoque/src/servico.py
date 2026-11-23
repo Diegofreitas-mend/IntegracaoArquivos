@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+from banco import Banco
+
 from .config import Pastas
 from .log_config import configurar_logging
 from .processador import processar_pendentes
@@ -17,9 +19,10 @@ class ServicoEstoque:
         self.pastas = Pastas.no_projeto(raiz)
         self.pastas.criar()
         configurar_logging(self.pastas.arquivo_log, console=False)
+        self.banco = Banco.do_projeto(raiz, self.pastas.arquivo_estoque)
 
     def repositorio(self) -> RepositorioEstoque:
-        return RepositorioEstoque(self.pastas.arquivo_estoque)
+        return RepositorioEstoque(self.banco)
 
     def arquivos(self) -> dict[str, list[str]]:
         return {

@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from banco import MAIOR_ID
+
 from .produto_estoque import ProdutoEstoque
 from .venda_recebida import ItemRecebido, VendaRecebida
 
@@ -31,7 +33,7 @@ def validar_venda(
         raise ErroValidacao("o conteúdo do arquivo deve ser um objeto JSON")
 
     venda_id = dados.get("venda_id")
-    if not _eh_inteiro(venda_id) or venda_id <= 0:
+    if not _eh_inteiro(venda_id) or not 0 < venda_id <= MAIOR_ID:
         raise ErroValidacao("campo 'venda_id' ausente ou inválido")
 
     data_hora = dados.get("data_hora")

@@ -12,6 +12,7 @@ from unittest.mock import patch
 from urllib.error import HTTPError
 from urllib.request import HTTPCookieProcessor, Request, build_opener, urlopen
 
+from banco import ErroBanco, Transacao
 from interface.aplicacao import Aplicacao, ErroRepositorio
 from interface.servidor import criar_servidor
 
@@ -114,9 +115,10 @@ class FluxoTest(unittest.TestCase):
         self.assertEqual(self.app.estado()["produtos"][0]["quantidade"], 48)
 
     def test_falha_ao_salvar_historico_nao_confirma_nem_exporta(self):
+        # A venda já foi inserida quando a gravação dos itens falha: a
+        # transação precisa desfazer as duas coisas.
         with patch.object(
-            repositorio_vendas, "gravar_json",
-            side_effect=OSError("disco indisponível"),
+            Transacao, "varios", side_effect=ErroBanco("banco indisponível"),
         ), self.assertRaises(OSError):
             self.vender()
         self.assertEqual(self.app.estado()["vendas"], [])
@@ -182,9 +184,8 @@ class FluxoTest(unittest.TestCase):
     def test_venda_rejeitada_libera_reserva(self):
         self.vender(50)
         # Simula uma alteração de saldo feita no sistema de estoque antes da integração.
-        repo = self.app.estoque.repositorio()
-        repo.produtos[1].quantidade = 10
-        repo._gravar(repo.produtos, repo.processados)
+        with self.app.estoque.banco.transacao() as t:
+            t.executar("UPDATE estoque_produtos SET quantidade = 10 WHERE produto_id = 1")
         self.app.executar("/api/sincronizar", {})
         estado = self.app.estado()
         self.assertEqual(estado["vendas"][0]["status"], "erro")

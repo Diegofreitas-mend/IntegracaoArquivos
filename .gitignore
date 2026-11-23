@@ -12,3 +12,4 @@ integracao/saida/*.json
 integracao/entrada/*.json
 integracao/processados/*.json
 integracao/erros/*.json
+*.env

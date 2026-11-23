@@ -12,15 +12,15 @@ Abra http://127.0.0.1:8000.
 
 ## Terminal (RF01)
 
-Na raiz, execute `python vendas.py`. Dentro desta pasta, o comando equivalente
-é `python -m src.main`. O menu permite registrar vendas, consultar o catálogo
-de demonstração e listar o histórico. O JSON é gerado ao confirmar o pedido.
+Na raiz, execute `python vendas.py`. O menu permite registrar vendas, consultar
+o catálogo de demonstração e listar o histórico. O JSON é gerado ao confirmar o
+pedido.
 
 Para usar dados separados, execute `python vendas.py --dados CAMINHO` a partir
 da raiz. O terminal usa Mouse, Teclado e Monitor como catálogo local inicial e
 não consulta o estoque; o saldo é validado pelo consumidor do arquivo.
 
-O histórico fica em `data/vendas/`, os preços em `data/precos.json` e os arquivos exportados em `../integracao/saida/`. Use **Sincronizar vendas** para transferir e processar os pedidos no estoque.
+O histórico fica nas tabelas `vendas` e `vendas_itens` e os preços em `vendas_precos`, no Supabase (ou em `data/vendas.db` sem `.env`; veja o [README principal](../README.md#banco-de-dados-supabase)). Os arquivos exportados vão para `../integracao/saida/`. Use **Sincronizar vendas** para transferir e processar os pedidos no estoque.
 
 As vendas pendentes reservam o saldo disponível. Pedidos processados e rejeitados deixam de reservar saldo. Os valores de cada pedido são preservados no histórico mesmo depois de editar os preços do catálogo.
 

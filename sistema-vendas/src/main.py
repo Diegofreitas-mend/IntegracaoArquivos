@@ -3,6 +3,8 @@
 import argparse
 from pathlib import Path
 
+from banco import ErroBanco
+
 from .servico import ServicoVendas
 from .terminal import executar_menu
 
@@ -18,7 +20,14 @@ def main() -> None:
         if argumentos.dados
         else Path(__file__).resolve().parents[2]
     )
-    executar_menu(ServicoVendas(raiz))
+    try:
+        servico = ServicoVendas(raiz)
+    except ErroBanco as erro:
+        print(f"Não foi possível acessar o banco de dados: {erro}")
+        return
+    print(f"Banco de dados: {servico.banco.descricao}")
+    executar_menu(servico)
+    servico.banco.fechar()
 
 
 if __name__ == "__main__":
